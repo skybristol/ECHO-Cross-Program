@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import folium
+import seaborn as sns
 from folium.plugins import FastMarkerCluster
 import ipywidgets as widgets
 from ipywidgets import interact, interactive, fixed, interact_manual, Layout
@@ -405,3 +406,32 @@ def make_filename( base, type, state, region, filetype='csv' ):
     if ( not os.path.exists( dir )):
         os.makedirs( dir )
     return dir + filename
+
+def get_top_violators( df_active, flag, state, cd, noncomp_field, action_field, num_fac=10 ):
+    df_active = df_active.loc[ df_active[flag] == 'Y'].copy()
+    noncomp = df_active[ noncomp_field ]
+    noncomp_count = noncomp.str.count('S') + noncomp.str.count('V')
+    df_active['noncomp_count'] = noncomp_count
+    df_active = df_active[['FAC_NAME', 'noncomp_count', action_field,
+            'DFR_URL', 'FAC_LAT', 'FAC_LONG']]
+    df_active = df_active.sort_values( by=['noncomp_count', action_field], 
+            ascending=False )
+    df_active = df_active.head( num_fac )
+    return df_active   
+
+def chart_top_violators( ranked, state, cd, epa_pgm ):
+    sns.set(style='whitegrid')
+    fig, ax = plt.subplots(figsize=(20,10))
+    unit = ranked.index 
+    values = ranked['noncomp_count'] 
+    try:
+        g = sns.barplot(values, unit, order=list(unit), orient="h") 
+        g.set_title('{} facilities with the most non-compliant quarters in {} - {}'.format( 
+                epa_pgm, state, str( cd )))
+        ax.set_xlabel("Non-compliant quarters")
+        ax.set_ylabel("Facility")
+        ax.set_yticklabels(ranked["FAC_NAME"])
+        return ( g )
+    except TypeError as te:
+        print( "TypeError: {}".format( str(te) ))
+        return None
